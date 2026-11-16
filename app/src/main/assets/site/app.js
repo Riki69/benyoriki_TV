@@ -1,0 +1,552 @@
+/* ═══════════════════════════════════════════════
+   RIKI DEV 2026 — app.js
+   Lightweight · Canggih · Full Featured
+   ═══════════════════════════════════════════════ */
+
+/* ── SCROLL PROGRESS BAR ── */
+(function() {
+  const bar = document.createElement('div');
+  bar.id = 'scrollProgress';
+  document.body.prepend(bar);
+  window.addEventListener('scroll', () => {
+    const total = document.documentElement.scrollHeight - window.innerHeight;
+    if (total <= 0) { bar.style.width = '100%'; return; }
+    bar.style.width = Math.min(window.scrollY / total * 100, 100) + '%';
+  }, { passive: true });
+})();
+
+/* ── THEME ── */
+const html = document.documentElement;
+const themeBtn = document.getElementById('themeBtn');
+const applyTheme = t => { html.setAttribute('data-theme', t); localStorage.setItem('rk-theme', t); };
+applyTheme(localStorage.getItem('rk-theme') || 'dark');
+themeBtn?.addEventListener('click', () => applyTheme(html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'));
+
+/* ── NAVBAR ── */
+const navbar = document.getElementById('navbar');
+let lastY = 0, ticking = false;
+window.addEventListener('scroll', () => {
+  if (!ticking) {
+    requestAnimationFrame(() => {
+      const y = window.scrollY;
+      navbar?.classList.toggle('up', y > 40);
+      // Active link highlight
+      document.querySelectorAll('section[id]').forEach(s => {
+        const top = s.offsetTop - 120, id = s.id;
+        const link = document.querySelector(`.nl[href="#${id}"]`);
+        if (y >= top && y < top + s.offsetHeight) {
+          document.querySelectorAll('.nl').forEach(l => l.classList.remove('active'));
+          link?.classList.add('active');
+        }
+      });
+      lastY = y;
+      ticking = false;
+    });
+    ticking = true;
+  }
+}, { passive: true });
+
+/* ── HAMBURGER ── */
+const hamburger = document.getElementById('hamburger');
+const mobMenu = document.getElementById('mobMenu');
+const mobMenuScrim = document.getElementById('mobMenuScrim');
+hamburger?.addEventListener('click', () => {
+  const isOpen = mobMenu?.classList.toggle('show');
+  mobMenuScrim?.classList.toggle('show', isOpen);
+  hamburger?.classList.toggle('active', isOpen);
+});
+function closeMob() {
+  mobMenu?.classList.remove('show');
+  mobMenuScrim?.classList.remove('show');
+  hamburger?.classList.remove('active');
+}
+document.addEventListener('click', e => { if (!navbar?.contains(e.target)) closeMob(); });
+
+/* Section-heading entrance animation removed — headings render at full
+   opacity immediately instead of fading/blurring in on scroll. */
+
+/* ── SMOOTH ANCHOR SCROLL with offset ── */
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const id = a.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    if (el) {
+      e.preventDefault();
+      const offset = 80;
+      const top = el.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top, behavior: 'smooth' });
+    }
+  });
+});
+
+/* ── COUNTER ANIMATION ── */
+function runCounter(el) {
+  const target = +el.dataset.count;
+  let start = null;
+  const easeOutExpo = t => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+  const step = ts => {
+    if (!start) start = ts;
+    const p = Math.min((ts - start) / 1800, 1);
+    const ease = easeOutExpo(p);
+    el.textContent = Math.floor(ease * target);
+    if (p < 1) {
+      requestAnimationFrame(step);
+    } else {
+      el.textContent = target;
+      // Gold flash on finish
+      el.style.transition = 'text-shadow .3s';
+      el.style.textShadow = '0 0 30px rgba(201,168,76,.6)';
+      setTimeout(() => { el.style.textShadow = '0 0 20px rgba(201,168,76,.3)'; }, 300);
+    }
+  };
+  requestAnimationFrame(step);
+}
+const cntObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting && !e.target.dataset.done) {
+      e.target.dataset.done = '1';
+      runCounter(e.target);
+    }
+  });
+}, { threshold: .5 });
+document.querySelectorAll('[data-count]').forEach(el => cntObs.observe(el));
+
+/* ── DB WIDGET LIVE UPDATES (slow, subtle — signals "real-time" without being distracting) ── */
+setInterval(() => {
+  const o = document.getElementById('dbO');
+  const r = document.getElementById('dbR');
+  if (o) o.textContent = `#${1200 + Math.floor(Math.random() * 150)}`;
+  if (r) r.textContent = `Rp ${(2 + Math.random() * .7).toFixed(1)}M`;
+}, 6000);
+setInterval(() => {
+  const s = document.getElementById('dbS');
+  if (s) s.textContent = `${Math.floor(Math.random() * 40)}ms ago`;
+}, 5000);
+
+/* Scroll-reveal removed — content is visible immediately, no
+   fade/slide-in choreography on every card. */
+
+/* ── CONTACT FORM ── */
+function submitForm() {
+  const nameEl = document.getElementById('fName');
+  const typeEl = document.getElementById('fType');
+  const descEl = document.getElementById('fDesc');
+  const name = nameEl?.value.trim();
+  const type = typeEl?.value;
+  const desc = descEl?.value.trim();
+
+  // Validasi lengkap
+  if (!name) { showToast('⚠️ Masukkan nama / nama bisnis Anda'); nameEl?.focus(); return; }
+  if (name.length < 2) { showToast('⚠️ Nama terlalu pendek'); nameEl?.focus(); return; }
+  if (!type) { showToast('⚠️ Pilih jenis sistem yang dibutuhkan'); typeEl?.focus(); return; }
+  if (!desc) { showToast('⚠️ Ceritakan kebutuhan bisnis Anda dulu'); descEl?.focus(); return; }
+  if (desc.length < 10) { showToast('⚠️ Deskripsi terlalu singkat, ceritakan lebih detail'); descEl?.focus(); return; }
+
+  const msg = encodeURIComponent(`Halo Riki! Saya *${name}*\n\nMembutuhkan: *${type}*\n\nDeskripsi:\n${desc}\n\n_Dikirim dari website benyoriki.com_`);
+  window.open(`https://wa.me/628988995637?text=${msg}`, '_blank');
+  showToast('✅ Membuka WhatsApp...');
+
+  // Reset form setelah submit berhasil
+  if (nameEl) nameEl.value = '';
+  if (typeEl) typeEl.value = '';
+  if (descEl) descEl.value = '';
+}
+
+function showToast(msg, dur = 3000) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+/* ── CHATBOX — Balasan pintar berbasis kata kunci (client-side, tanpa API key) ── */
+const chatFab = document.getElementById('chatFab');
+const chatbox = document.getElementById('chatbox');
+const fabDot = document.getElementById('fabDot');
+const cbMsgs = document.getElementById('cbMsgs');
+const cbTyping = document.getElementById('cbTyping');
+const cbIn = document.getElementById('cbIn');
+let chatOpen = false, waShown = 0, conversationHistory = [];
+
+// System prompt khusus untuk asisten Riki
+const SYSTEM_PROMPT = `Kamu adalah asisten virtual dari Riki Hermawan S.Kom, pengembang sistem website profesional untuk UMKM dan bisnis lokal Indonesia.
+
+IDENTITAS:
+- Nama asisten: Asisten Riki
+- Pemilik jasa: Riki Hermawan S.Kom
+- Kontak WA: 08988995637
+- Website: benyoriki.com
+- Spesialisasi: Sistem website real-time, kasir online, toko digital, dashboard bisnis
+
+PAKET HARGA (SELALU SEBUT INI JIKA DITANYA HARGA):
+- Basic: Mulai Rp 200rb → Landing Page/Profil Bisnis, hosting gratis (GitHub/Netlify) + subdomain gratis, domain kustom terpisah, selesai 2–3 hari kerja, 1x revisi
+- Standar: Mulai Rp 1,2jt → Toko Online, Katalog Produk, Sistem Login, selesai 3–5 hari kerja
+- Pro: Mulai Rp 3jt → Kasir Online, Dashboard Real-Time, Multi-Cabang, selesai 5–10 hari kerja
+- SEMUA paket: DP 50% di muka, sisa 50% setelah demo & Anda puas; perbaikan bug gratis 30 hari pertama
+
+KEUNGGULAN UTAMA (selalu tekankan):
+- Website bisnis siap 2–10 hari kerja (Basic 2–3, Standar 3–5, Pro 5–10)
+- Harga mulai Rp 200rb (paket Basic) dengan hosting gratis
+- Demo sistem sebelum pelunasan — sisa 50% dibayar setelah Anda puas
+- Support & revisi pasca-launch
+- Bisa diakses dari HP kapan saja
+
+ATURAN MENJAWAB:
+1. Jawab dalam Bahasa Indonesia yang hangat, friendly, dan profesional
+2. Maksimal 4–5 kalimat per balasan — singkat tapi langsung ke manfaat
+3. Jika ditanya harga: LANGSUNG sebut paket dan harga spesifik (Basic/Standar/Pro)
+4. Jangan bilang "tergantung" tanpa memberikan angka perkiraan dulu
+5. Setelah 2 pesan, sarankan untuk konsultasi WA atau isi form
+6. Gunakan emoji secukupnya agar terasa personal
+7. Jika ditanya hal di luar layanan web/bisnis, arahkan kembali dengan sopan
+8. Selalu akhiri dengan ajakan action (chat WA, isi form, atau lihat portofolio)`;
+
+function toggleChat() {
+  chatOpen = !chatOpen;
+  chatbox?.classList.toggle('open', chatOpen);
+  document.getElementById('chatScrim')?.classList.toggle('show', chatOpen);
+  if (chatOpen && fabDot) fabDot.style.display = 'none';
+}
+
+function addMsg(html, type = 'bot') {
+  const d = document.createElement('div');
+  d.className = `cb-msg ${type}`;
+  const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  d.innerHTML = `<div class="cb-bubble">${html}</div><div class="cb-time">${now}</div>`;
+  cbMsgs?.appendChild(d);
+  if (cbMsgs) cbMsgs.scrollTop = 9999;
+}
+
+function rmQR() { document.getElementById('cbQR')?.remove(); }
+
+function showTyping(cb, delay = 1400) {
+  if (cbTyping) cbTyping.style.display = 'flex';
+  if (cbMsgs) cbMsgs.scrollTop = 9999;
+  setTimeout(() => {
+    if (cbTyping) cbTyping.style.display = 'none';
+    cb();
+  }, delay);
+}
+
+function addWABtn() {
+  const d = document.createElement('div');
+  d.style.cssText = 'display:flex;justify-content:center;margin-top:4px';
+  d.innerHTML = `<a href="https://wa.me/628988995637" target="_blank" style="display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;text-decoration:none;font-weight:700;padding:9px 16px;border-radius:50px;font-size:.78rem;font-family:'Outfit',sans-serif">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+    💬 Lanjut Chat di WhatsApp
+  </a>`;
+  cbMsgs?.appendChild(d);
+  if (cbMsgs) cbMsgs.scrollTop = 9999;
+}
+
+async function getAIReply(userMessage) {
+  // Chatbox ini berjalan sepenuhnya di sisi klien (static hosting / GitHub Pages),
+  // jadi tidak ada backend aman untuk menyimpan API key. Daripada memanggil API
+  // eksternal tanpa autentikasi (selalu gagal & menambah delay), kita langsung
+  // pakai mesin balasan pintar berbasis kata kunci — cepat & selalu relevan.
+  conversationHistory.push({ role: 'user', content: userMessage });
+
+  const reply = getFallbackReply(userMessage);
+
+  conversationHistory.push({ role: 'assistant', content: reply });
+  if (conversationHistory.length > 10) {
+    conversationHistory = conversationHistory.slice(-10);
+  }
+
+  return reply;
+}
+
+function getFallbackReply(txt) {
+  const t = txt.toLowerCase();
+  if (t.includes('kasir') || t.includes('pos') || t.includes('inventory'))
+    return `🛒 <strong>Sistem Kasir Online</strong> adalah layanan paling diminati kami! Cocok banget untuk warung, toko, atau bisnis multi-cabang — stok update otomatis, laporan harian, bisa diakses dari HP. Harga tergantung fitur & kerumitan sistem, mulai dari <strong>Rp 3 juta</strong> (Paket Pro). Hosting & domain dihitung terpisah untuk paket ini. Mau konsultasi gratis dulu? 😊`;
+  if (t.includes('toko') || t.includes('online') || t.includes('shop') || t.includes('ecommerce'))
+    return `🌐 <strong>Toko Online</strong> kami dibuat khusus untuk UMKM — tampil profesional tanpa harga selangit! Katalog produk, keranjang belanja, order via WhatsApp, semua bisa disesuaikan. Toko online lengkap ada di Paket Standar mulai <strong>Rp 1,2jt</strong>; untuk halaman sederhana, Paket Basic mulai <strong>Rp 200rb</strong> (hosting gratis). Produk apa yang mau Anda jual? 🎯`;
+  if (t.includes('harga') || t.includes('biaya') || t.includes('berapa') || t.includes('budget') || t.includes('murah') || t.includes('mahal') || t.includes('paket'))
+    return `💰 Kami punya 3 paket dengan harga transparan:<br><br>📌 <strong>Basic</strong>: Mulai Rp 200rb → Landing Page + Hosting Gratis (2–3 hari selesai)<br>📌 <strong>Standar</strong>: Mulai Rp 1,2jt → Toko Online + Sistem Login (3–5 hari selesai)<br>📌 <strong>Pro</strong>: Mulai Rp 3jt → Kasir + Dashboard Real-Time + Multi-Cabang (5–10 hari selesai)<br><br>Semua paket: <strong>DP 50% di muka, sisa 50% setelah demo & Anda puas</strong>. Mau tahu lebih detail? <a href='https://wa.me/628988995637' target='_blank'>Chat Riki sekarang →</a> 🚀`;
+  if (t.includes('hosting') || t.includes('domain'))
+    return `🌐 Soal hosting & domain, begini ketentuannya: paket <strong>Basic</strong> sudah termasuk <strong>hosting gratis</strong> (GitHub/Netlify) dan subdomain gratis; domain kustom (.com/.id) dibeli terpisah. Untuk paket Standar dan Pro, hosting & domain dihitung <strong>terpisah</strong> dari harga jasa, dan kami bantu setup. Mau tahu lebih lanjut? Yuk konsultasi gratis! 😊`;
+  if (t.includes('dashboard') || t.includes('laporan') || t.includes('analitik'))
+    return `📊 <strong>Dashboard bisnis real-time</strong> bisa pantau omzet, stok, dan transaksi dari mana saja langsung dari HP Anda! Grafik live, laporan otomatis, export PDF/Excel. Harga tergantung fitur & kerumitan, estimasi mulai <strong>Rp 3–7 juta</strong> (hosting & domain terpisah). Sangat cocok untuk pemilik bisnis yang sering mobile. Bisnis Anda di bidang apa? 🏪`;
+  if (t.includes('lama') || t.includes('waktu') || t.includes('kapan') || t.includes('selesai'))
+    return `⏱️ Waktu pengerjaan tergantung kompleksitas sistem. Landing page sederhana <strong>2–3 hari kerja</strong>, toko online <strong>3–5 hari kerja</strong>, kasir/dashboard real-time <strong>5–10 hari kerja</strong>. Ada demo sebelum launch, jadi Anda bisa lihat hasilnya sebelum pelunasan! 🚀`;
+  if (t.includes('portfolio') || t.includes('portofolio') || t.includes('contoh') || t.includes('hasil'))
+    return `👀 Portofolio kami bisa dilihat langsung di halaman ini — <strong>bukan sekadar screenshot, tapi website asli yang bisa dibuka!</strong> Scroll ke bagian Portofolio ya. Ada toko online, kasir, UMKM makanan & minuman, dan lainnya. Mau saya rekomendasikan yang paling mirip dengan bisnis Anda? 😊`;
+  if (/halo|hai|hi|hello|selamat|pagi|siang|malam/.test(t))
+    return `Halo! Selamat datang di layanan website Riki 👋 Kami spesialis pembuatan sistem web untuk <strong>UMKM & bisnis lokal</strong> — harga mulai <strong>Rp 200rb</strong> (paket Basic, hosting gratis)! Ada yang bisa saya bantu hari ini? 😊`;
+  if (t.includes('revisi') || t.includes('support') || t.includes('maintenance') || t.includes('after'))
+    return `🛡️ Tenang, kami tidak tinggalkan Anda setelah selesai! Setiap proyek sudah termasuk <strong>support & revisi</strong> pasca-launch. Jika ada bug atau perlu penyesuaian, kami siap bantu. Untuk maintenance jangka panjang juga tersedia paket bulanan. Tidak perlu khawatir soal itu! 💪`;
+  if (t.includes('gratis') || t.includes('free'))
+    return `🎁 Ada yang gratis nih! Paket <strong>Basic</strong> (mulai Rp 200rb) sudah termasuk <strong>hosting gratis</strong> dan subdomain gratis. Konsultasi awal juga gratis! Untuk paket yang lebih kompleks, hosting & domain dihitung terpisah sesuai kebutuhan. Tertarik? 😊`;
+  return `Terima kasih sudah menghubungi kami! 🙏 Kami spesialis <strong>sistem website untuk UMKM & bisnis</strong> — harga mulai <strong>Rp 200rb</strong> (paket Basic, hosting gratis). Harga bisa lebih tergantung fitur & kerumitan sistem. Boleh ceritakan bisnis Anda? Biar saya rekomendasikan solusi yang paling tepat 💡`;
+}
+
+async function processAndReply(userText) {
+  addMsg(userText, 'user');
+  if (cbTyping) cbTyping.style.display = 'flex';
+  if (cbMsgs) cbMsgs.scrollTop = 9999;
+
+  const reply = await getAIReply(userText);
+
+  if (cbTyping) cbTyping.style.display = 'none';
+  addMsg(reply, 'bot');
+  waShown++;
+  if (waShown === 2) addWABtn();
+}
+
+function qReply(txt) {
+  rmQR();
+  processAndReply(txt);
+}
+
+function sendChat() {
+  const val = cbIn?.value.trim();
+  if (!val) return;
+  cbIn.value = '';
+  rmQR();
+  processAndReply(val);
+}
+
+/* ── ESTIMASI HARGA KALKULATOR ── */
+(function() {
+  let picks = { step1: '', step2: '', step3: '' };
+
+  window.pickEst = function(btn, currentStep, nextStep) {
+    // Mark selected
+    btn.closest('.est-opts').querySelectorAll('.est-opt').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    picks[currentStep] = btn.dataset.val;
+
+    // Transition to next step
+    setTimeout(() => {
+      document.getElementById(currentStep)?.classList.remove('active');
+      document.getElementById(nextStep)?.classList.add('active');
+      // Update progress dots
+      const stepNum = parseInt(nextStep.replace('est',''), 10);
+      document.querySelectorAll('.est-pdot').forEach((d, i) => {
+        d.classList.toggle('active', i < stepNum);
+      });
+    }, 200);
+  };
+
+  window.showEstResult = function(btn) {
+    btn.closest('.est-opts').querySelectorAll('.est-opt').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    picks.step3 = btn.dataset.val;
+
+    setTimeout(() => {
+      document.getElementById('est3')?.classList.remove('active');
+      document.querySelectorAll('.est-pdot').forEach(d => d.classList.add('active'));
+
+      // Hitung estimasi berdasarkan kombinasi
+      let minHarga, maxHarga, paket, note;
+      const f = picks.step2;
+      const c = picks.step3;
+
+      if (f === 'landing') {
+        minHarga = 'Rp 200rb'; maxHarga = 'Rp 500rb';
+        paket = 'Paket Basic';
+        note = 'Landing page profesional dengan form order WA. Hosting gratis (subdomain); domain kustom terpisah. Selesai 2–3 hari kerja.';
+      } else if (f === 'toko') {
+        minHarga = 'Rp 1,2jt'; maxHarga = 'Rp 2,5jt';
+        paket = 'Paket Standar';
+        note = 'Toko online lengkap: katalog produk, cart, checkout WA, sistem login member. Selesai 3–5 hari kerja.';
+      } else if (f === 'kasir') {
+        if (c === '1') { minHarga = 'Rp 3jt'; maxHarga = 'Rp 3,5jt'; }
+        else if (c === '2-5') { minHarga = 'Rp 3jt'; maxHarga = 'Rp 5jt'; }
+        else { minHarga = 'Rp 4jt'; maxHarga = 'Rp 7jt+'; }
+        paket = 'Paket Pro';
+        note = 'Kasir online multi-cabang, stok otomatis, laporan harian & bulanan, akses multi-role. Selesai 5–10 hari kerja.';
+      } else if (f === 'dashboard') {
+        if (c === '1') { minHarga = 'Rp 3jt'; maxHarga = 'Rp 4,5jt'; }
+        else { minHarga = 'Rp 4jt'; maxHarga = 'Rp 8jt+'; }
+        paket = 'Paket Pro';
+        note = 'Dashboard real-time: grafik live, KPI tracking, laporan otomatis, export PDF/Excel, akses dari HP. Selesai 5–10 hari kerja.';
+      } else {
+        minHarga = 'Rp 200rb'; maxHarga = 'Rp 3jt+';
+        paket = 'Diskusikan dulu';
+        note = 'Estimasi tergantung fitur & kompleksitas. Konsultasi gratis untuk mendapat harga yang paling sesuai.';
+      }
+
+      const priceEl = document.getElementById('estPrice');
+      const noteEl = document.getElementById('estNote');
+      const waEl = document.getElementById('estWA');
+      const resultEl = document.getElementById('estResult');
+      const progressEl = document.getElementById('estProgress');
+
+      if (priceEl) priceEl.textContent = `${minHarga} – ${maxHarga}`;
+      if (noteEl) noteEl.innerHTML = `<strong>${paket}</strong><br>${note}`;
+      if (waEl) {
+        const waMsg = encodeURIComponent(`Halo Riki! Saya sudah coba kalkulator estimasi di benyoriki.com.\n\nBisnis: ${picks.step1}\nFitur: ${f}\nCabang: ${c}\nEstimasi: ${minHarga} – ${maxHarga}\n\nBoleh minta penawaran resminya?`);
+        waEl.href = `https://wa.me/628988995637?text=${waMsg}`;
+      }
+      if (resultEl) resultEl.style.display = 'block';
+      if (progressEl) progressEl.style.display = 'none';
+    }, 200);
+  };
+
+  window.resetEst = function() {
+    picks = { step1: '', step2: '', step3: '' };
+    ['est1','est2','est3'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.remove('active');
+        el.querySelectorAll('.est-opt').forEach(b => b.classList.remove('selected'));
+      }
+    });
+    const r = document.getElementById('estResult');
+    if (r) r.style.display = 'none';
+    const p = document.getElementById('estProgress');
+    if (p) p.style.display = '';
+    document.getElementById('est1')?.classList.add('active');
+    document.querySelectorAll('.est-pdot').forEach((d, i) => d.classList.toggle('active', i === 0));
+  };
+})();
+
+/* ── FAQ TOGGLE ── */
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const ans = item.querySelector('.faq-a');
+  const isOpen = item.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.faq-item').forEach(i => {
+    i.classList.remove('open');
+    i.querySelector('.faq-a')?.classList.remove('open');
+  });
+  // Open clicked if it was closed
+  if (!isOpen) {
+    item.classList.add('open');
+    ans?.classList.add('open');
+  }
+}
+
+/* ── TESTIMONI IMAGE MODAL ── */
+const modal = document.getElementById("imgModal");
+const modalImg = document.getElementById("modalImg");
+const closeModalBtn = document.querySelector(".close-modal");
+
+document.querySelectorAll(".testi-img").forEach(img => {
+  img.addEventListener("click", function(){
+    if (!modal || !modalImg) return;
+    modal.style.display = "block";
+    modalImg.src = this.src;
+    modalImg.alt = this.alt;
+  });
+});
+
+if (closeModalBtn) {
+  closeModalBtn.addEventListener('click', () => { if (modal) modal.style.display = "none"; });
+}
+if (modal) {
+  modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = "none"; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') modal.style.display = "none"; });
+}
+
+/* ── TESTIMONI CAROUSEL DOTS (mobile scroll snap) ── */
+(function() {
+  const grid = document.getElementById('testiGrid');
+  const dots = document.querySelectorAll('.testi-dot');
+  if (!grid || !dots.length) return;
+
+  function getActiveIndex() {
+    const cards = grid.querySelectorAll('.testi-card');
+    if (!cards.length) return 0;
+    const itemW = cards[0].offsetWidth + 12; // width + gap
+    return Math.min(Math.round(grid.scrollLeft / itemW), dots.length - 1);
+  }
+
+  function updateDots() {
+    const active = getActiveIndex();
+    dots.forEach((d, i) => d.classList.toggle('active', i === active));
+  }
+
+  grid.addEventListener('scroll', updateDots, { passive: true });
+
+  dots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      const idx = parseInt(dot.dataset.index, 10);
+      const cards = grid.querySelectorAll('.testi-card');
+      if (!cards.length) return;
+      const itemW = cards[0].offsetWidth + 12;
+      grid.scrollTo({ left: itemW * idx, behavior: 'smooth' });
+    });
+  });
+})();
+
+/* Hero load animation removed — hero content is visible immediately
+   instead of materializing element-by-element with blur/slide delays. */
+
+/* ── BUTTON RIPPLE EFFECT ── */
+document.querySelectorAll('.btn-solid, .btn-ghost, .cta-btn, .form-submit, .wa-cta, .pc-btn').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    const r = this.getBoundingClientRect();
+    const ripple = document.createElement('span');
+    const size = Math.max(r.width, r.height);
+    ripple.style.cssText = `
+      position:absolute; border-radius:50%;
+      width:${size}px; height:${size}px;
+      left:${e.clientX - r.left - size/2}px;
+      top:${e.clientY - r.top - size/2}px;
+      background:rgba(255,255,255,.25);
+      transform:scale(0); animation:ripple .55s ease-out forwards;
+      pointer-events:none; z-index:10;
+    `;
+    this.style.position = 'relative';
+    this.style.overflow = 'hidden';
+    this.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 600);
+  });
+});
+
+/* Add ripple keyframe dynamically */
+if (!document.getElementById('rippleStyle')) {
+  const s = document.createElement('style');
+  s.id = 'rippleStyle';
+  s.textContent = '@keyframes ripple{to{transform:scale(2.5);opacity:0}}';
+  document.head.appendChild(s);
+}
+
+/* ── LOCK HORIZONTAL SCROLL ──────────────────────────────────────────
+   Jaring pengaman terakhir: apapun penyebabnya (elemen yang melebar,
+   bug WebView, dsb), posisi geser horizontal dipaksa balik ke 0 setiap
+   kali terdeteksi bergeser. Ini membuat halaman "terkunci" secara nyata
+   di layar HP, tidak hanya mengandalkan overflow-x:hidden di CSS. ── */
+(function lockHorizontalScroll() {
+  function snapBack() {
+    if (window.scrollX !== 0) {
+      window.scrollTo(0, window.scrollY);
+    }
+  }
+  window.addEventListener('scroll', snapBack, { passive: true });
+  window.addEventListener('resize', snapBack);
+  window.addEventListener('orientationchange', snapBack);
+  document.addEventListener('DOMContentLoaded', snapBack);
+  window.addEventListener('load', snapBack);
+})();
+
+/* ── PRELOADER — tampil ±6 detik dengan status & counter dinamis lalu fade-out premium ── */
+/* ── SPLASH SCREEN — shows for ~5s, then fades out (respects reduced motion) ── */
+(function () {
+  const splash = document.getElementById('splash');
+  if (!splash) return;
+  const fill = document.getElementById('spFill');
+  const DURATION = 900;
+  document.documentElement.classList.add('sp-lock');
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (fill) fill.style.width = '100%';
+  }));
+
+  setTimeout(() => {
+    splash.classList.add('sp-hide');
+    document.documentElement.classList.remove('sp-lock');
+    if (location.hash) {
+      const target = document.querySelector(location.hash);
+      if (target) target.scrollIntoView();
+    }
+    setTimeout(() => splash.remove(), 550);
+  }, DURATION);
+})();
+
+/* sticky WA CTA: muncul setelah hero */
+(function(){const b=document.querySelector('.m-cta');if(!b)return;const f=()=>b.classList.toggle('show',window.scrollY>420);window.addEventListener('scroll',f,{passive:true});f();})();
