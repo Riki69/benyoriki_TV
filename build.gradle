@@ -1,3 +1,65 @@
 plugins {
-    id 'com.android.application' version '8.5.2' apply false
+    id 'com.android.application'
+}
+
+// Diisi oleh GitHub Actions (-PversionCode=<run_number> dst.); default untuk build lokal.
+def appVersionCode = Integer.parseInt((project.findProperty('versionCode') ?: '1').toString())
+def appVersionName = (project.findProperty('versionName') ?: '1.0.0').toString()
+// "pemilik/repo" GitHub tempat APK dirilis (dipakai untuk cek update otomatis)
+def appGithubRepo = (project.findProperty('githubRepo') ?: 'OWNER/REPO').toString()
+
+def ksPath = System.getenv('KEYSTORE_PATH') ?: '../keystore/release.jks'
+def ksPass = System.getenv('KEYSTORE_PASSWORD') ?: 'benyoriki123'
+def ksAlias = System.getenv('KEY_ALIAS') ?: 'benyoriki'
+def ksKeyPass = System.getenv('KEY_PASSWORD') ?: 'benyoriki123'
+
+android {
+    namespace = 'com.benyoriki.app'
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = 'com.benyoriki.app'
+        minSdk = 23
+        targetSdk = 34
+        versionCode = appVersionCode
+        versionName = appVersionName
+        buildConfigField 'String', 'GITHUB_REPO', "\"${appGithubRepo}\""
+        buildConfigField 'String', 'SITE_URL', '"https://benyoriki.com/"'
+    }
+
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    signingConfigs {
+        release {
+            // Kunci tetap supaya APK baru bisa menimpa (update) APK lama.
+            storeFile = file(ksPath)
+            storePassword = ksPass
+            keyAlias = ksAlias
+            keyPassword = ksKeyPass
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled = false
+            signingConfig = signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+    implementation 'androidx.core:core:1.13.1'
 }
