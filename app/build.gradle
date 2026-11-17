@@ -1,0 +1,57 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.benyoriki.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.benyoriki.app'
+        minSdk 23
+        targetSdk 34
+        // Diisi oleh GitHub Actions (-PversionCode=<run_number>)
+        versionCode (project.findProperty('versionCode') ?: '1').toInteger()
+        versionName (project.findProperty('versionName') ?: '1.0.0')
+        // "pemilik/repo" GitHub tempat APK dirilis (dipakai untuk cek update otomatis)
+        buildConfigField 'String', 'GITHUB_REPO', '"' + (project.findProperty('githubRepo') ?: 'OWNER/REPO') + '"'
+        buildConfigField 'String', 'SITE_URL', '"https://benyoriki.com/"'
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    signingConfigs {
+        release {
+            // Kunci tetap supaya APK baru bisa menimpa (update) APK lama.
+            // Untuk produksi: timpa lewat GitHub Secrets (lihat README).
+            storeFile file(System.getenv('KEYSTORE_PATH') ?: '../keystore/release.jks')
+            storePassword System.getenv('KEYSTORE_PASSWORD') ?: 'benyoriki123'
+            keyAlias System.getenv('KEY_ALIAS') ?: 'benyoriki'
+            keyPassword System.getenv('KEY_PASSWORD') ?: 'benyoriki123'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+    implementation 'androidx.core:core:1.13.1'
+}
