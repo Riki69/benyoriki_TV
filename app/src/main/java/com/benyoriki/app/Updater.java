@@ -118,7 +118,7 @@ final class Updater {
                 c.setReadTimeout(30000);
                 c.setRequestProperty("User-Agent", "BenyorikiApp");
                 if (c.getResponseCode() != 200) throw new Exception("HTTP " + c.getResponseCode());
-                long total = c.getContentLengthLong();
+                long total = c.getContentLength();
                 try (InputStream in = c.getInputStream(); OutputStream os = new FileOutputStream(out)) {
                     byte[] buf = new byte[16384];
                     long done = 0;

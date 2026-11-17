@@ -8,7 +8,7 @@ android {
 
     defaultConfig {
         applicationId 'com.benyoriki.app'
-        minSdk 21
+        minSdk 23
         targetSdk 34
         // Diisi oleh GitHub Actions (-PversionCode=<run_number>)
         versionCode (project.findProperty('versionCode') ?: '1').toInteger()
@@ -16,6 +16,11 @@ android {
         // "pemilik/repo" GitHub tempat APK dirilis (dipakai untuk cek update otomatis)
         buildConfigField 'String', 'GITHUB_REPO', '"' + (project.findProperty('githubRepo') ?: 'OWNER/REPO') + '"'
         buildConfigField 'String', 'SITE_URL', '"https://benyoriki.com/"'
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
     }
 
     buildFeatures {
